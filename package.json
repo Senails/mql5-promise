@@ -1,0 +1,23 @@
+{
+  "name": "mql5-promise",
+  "version": "1.0.0",
+  "description": "An interface for implementing asynchronous execution of algorithms for mql5, like Promise in JavaScript.",
+  "main": "index.mqh",
+  "scripts": {},
+  "keywords": [
+    "MQL5",
+    "Promise",
+    "MQL5 Promise"
+  ],
+  "author": "Kuzma Shevelev (seffele@gmail.com)",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Senails/mql5-timer",
+    "author": "https://github.com/Senails"
+  },
+  "bugs": {
+    "url": "https://github.com/HommaTech/mql-simplify/issues",
+    "email": "seffele@gmail.com"
+  }
+}
