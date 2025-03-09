@@ -306,13 +306,13 @@ private:
         }
     };
 
-    class PromiseIniterAndDesctructor {
+    class PromiseInitializerAndDestructor {
     public:
-        PromiseIniterAndDesctructor() {
+        PromiseInitializerAndDestructor() {
             ArrayResize(Promise::allResolvers, 0, 10);
             ArrayResize(Promise::allPromises, 0, 50);
         }
-        ~PromiseIniterAndDesctructor() {
+        ~PromiseInitializerAndDestructor() {
             for (int i = ArraySize(Promise::allResolvers) - 1; i >= 0; i--) {
                 if (CheckPointer(Promise::allResolvers[i]) == POINTER_DYNAMIC) delete Promise::allResolvers[i];
             }
@@ -323,19 +323,115 @@ private:
     };
 };
 
-template<typename T1, typename T1, typename T1>
+ulong Promise::idCounter = 0;
+Promise* Promise::allPromises[];
+Promise::Resolver* Promise::allResolvers[];
+Promise::PromiseInitializerAndDestructor promiseInitializerAndDestructor;
+
+// T1 - promise return type
+// T2 - prev promise return type
+// T3 - param type
+template<typename T1, typename T2, typename T3>
 class TypedPromise: public BasePromise {
-    
-}
+    class Resolver;
+
+    typedef void (*CallbackWithoutParamAndPrevResult)(TypedPromiseResolver<T1>*);
+    typedef void (*CallbackWithoutParam)(TypedPromiseResolver<T1>*, T2);
+    typedef void (*CallbackWithParam)(TypedPromiseResolver<T1>*, T2, T3);
+    typedef void (*PromiseAllCallback)(TypedPromiseResolver<T1>*, T2 &[], T3);
+
+    CallbackWithParam callbackWithParam;
+    CallbackWithoutParam callbackWithoutParam;
+    CallbackWithoutParamAndPrevResult callbackWithoutParamAndPrevResult;
+
+    Resolver* resolver;
+
+    bool withoutPrevResult;
+    T2 prevResult;
+
+    bool withoutParam;
+    T3 param;
+
+public:
+    TypedPromise(CallbackWithoutParamAndPrevResult call): BasePromise(), callbackWithoutParamAndPrevResult(call), withoutPrevResult(true) {
+        this.init();
+    };
+    TypedPromise(CallbackWithoutParam call): BasePromise(), callbackWithoutParam(call), withoutParam(true) {
+        this.init();
+    };
+    TypedPromise(CallbackWithParam call, T3 paramm): BasePromise(), callbackWithParam(call), param(paramm) {
+        this.init();
+    };
+
+    void destroy() {
+
+    }
+
+    void virtual _resolveHandler() override {
+        Print("Promise resolve: ", resolver.getValue());
+    };
+    void virtual _rejectHandler() override {
+        Print("Promise resolve: ", resolver.getRejectValue());
+    };
+
+    ~TypedPromise() {
+        delete this.resolver;
+    };
+private:
+    void init() {
+        this.resolver = new Resolver(&this);
+        if (this.parentPromise != NULL) return;
+        
+        if (this.withoutPrevResult) {
+            this.callbackWithoutParamAndPrevResult(this.resolver);
+        } else if (this.withoutParam) {
+            this.callbackWithoutParam(this.resolver, this.prevResult);
+        } else {
+            this.callbackWithParam(this.resolver, this.prevResult, this.param);
+        }
+    };
+
+    class Resolver: public TypedPromiseResolver<T1> {
+    public:
+        Resolver(BasePromise* prom): TypedPromiseResolver<T1>(prom) {};
+        T1 getValue() { return this.value; };
+        string getRejectValue() { return this.rejectValue; };
+    };
+};
 
 class BasePromise {
     static ulong idCounter;
+    static int deletedPromiseCounter;
     static BasePromise* allPromises[];
 
     enum PromiseStatusTypes { Resolved, Rejected, inProgress, Deleted };
+public:
+    bool isResolved() { return this.status == Resolved; };
+    bool isRejected() { return this.status == Resolved; };
+    bool isInProgress() { return this.status == inProgress; };
+    bool isWaitForDelete() { return this.status == Deleted; };
+
+    void virtual _resolveHandler() {};
+    void virtual _rejectHandler() {};
 protected:
     ulong id;
     PromiseStatusTypes status;
+
+    BasePromise* parentPromise;
+    BasePromise* parentPromises[];
+    BasePromise* thenChildPromises[];
+    BasePromise* catchChildPromises[];
+    BasePromise* finallyChildPromises[];
+
+    BasePromise(): id(BasePromise::idCounter++), status(inProgress) {
+        BasePromise::addPromiseToArray(BasePromise::allPromises, &this);
+    };
+
+    static void addPromiseToArray(BasePromise* &array[], BasePromise* promise) {
+        int currentSize = ArraySize(array);
+        ArrayResize(array, currentSize + 1, MathMax(currentSize/10, 10));
+        array[currentSize] = promise;
+    }
 
     static BasePromise* getPromiseByID(ulong id) {
         int left = 0;
@@ -353,6 +449,29 @@ protected:
 
         return NULL;
     }
+
+    static void destroy(BasePromise* promise) {
+        promise.status = Deleted;
+        BasePromise::deletedPromiseCounter++;
+
+        for (int i = 0; i < ArraySize(promise.thenChildPromises); i++) promise.thenChildPromises[i].parentPromise = NULL;
+        for (int i = 0; i < ArraySize(promise.catchChildPromises); i++) promise.catchChildPromises[i].parentPromise = NULL;
+        for (int i = 0; i < ArraySize(promise.finallyChildPromises); i++) promise.finallyChildPromises[i].parentPromise = NULL;
+
+        if (ArraySize(promise.parentPromises) > 0) {
+            for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
+                BasePromise* parentPromises = promise.parentPromises[i];
+                if (parentPromises.isResolved() || parentPromises.isRejected()) BasePromise::destroy(promise.parentPromises[i]);
+            }
+        }
+
+        int allPromiseCount = ArraySize(BasePromise::allPromises);
+        if (BasePromise::deletedPromiseCounter > 10 && BasePromise::deletedPromiseCounter > (allPromiseCount/20)) {
+            BasePromise::cleanupAllPromises();
+            BasePromise::deletedPromiseCounter = 0;
+        }
+    }
+
     static void cleanupAllPromises() {
         int validIndex = 0; 
         for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) {
@@ -363,11 +482,46 @@ protected:
             BasePromise::allPromises[validIndex++] = BasePromise::allPromises[i];
         }
         
-        ArrayResize(Promise::allPromises, validIndex, MathMax(validIndex/10, 50));
+        ArrayResize(BasePromise::allPromises, validIndex, MathMax(validIndex/20, 50));
     }
+
+    class PromiseInitializerAndDestructor {
+    public:
+        ~PromiseInitializerAndDestructor() {
+            for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) delete BasePromise::allPromises[i];
+        }
+    };
 };
 
-ulong Promise::idCounter = 0;
-Promise* Promise::allPromises[];
-Promise::Resolver* Promise::allResolvers[];
-Promise::PromiseIniterAndDesctructor promiseIniterAndDesctructor;
+template<typename T>
+class TypedPromiseResolver {
+protected:
+    BasePromise* basePromise;
+    T value;
+    string rejectValue;
+    bool alreadyResolved;
+
+    TypedPromiseResolver(BasePromise* promise): basePromise(promise), alreadyResolved(false) {};
+public:
+    void resolve(T resolveParam) {
+        if (!alreadyResolved) {
+            value = resolveParam;
+            alreadyResolved = true;
+            basePromise._resolveHandler();
+        }
+    };
+    void reject(string rejectParam) {
+        if (!alreadyResolved) {
+            rejectValue = rejectParam;
+            alreadyResolved = true;
+            basePromise._rejectHandler();
+        }
+    };
+};
+
+class PromiseResolver: public TypedPromiseResolver<string> {};
+
+ulong BasePromise::idCounter = 0;
+int BasePromise::deletedPromiseCounter = 0;
+BasePromise* BasePromise::allPromises[];
+BasePromise::PromiseInitializerAndDestructor basePromiseInitializerAndDestructor;
