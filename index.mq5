@@ -2,10 +2,12 @@
 
 void OnInit() {
     Print("start");
-    BasePromise* tt = new TypedPromise<string, string, string>(callback);
-}
 
-void callback(TypedPromiseResolver<string>* resolver) {
-    resolver.resolve("1234");
+    Promisee::try(TypedPromise<int, int, int>::callback(callback1), 123);
+    // new TypedPromise<int, int, int>(TypedPromise<int, int, int>::callback(callback1));
+};
+
+void callback1(TypedPromiseResolver<int>* resolver, int _, int param) {
+    resolver.resolve(1234);
     resolver.reject("4321");
-}
+};
