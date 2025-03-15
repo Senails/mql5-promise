@@ -353,7 +353,6 @@ public:
 };
 
 class BasePromise {
-    static ulong idCounter;
     static int deletedPromiseCounter;
     static BasePromise* allPromises[];
 
@@ -376,13 +375,13 @@ protected:
     BasePromise* parentPromises[];
     BasePromise* childPromises[];
 
-    BasePromise(): id(BasePromise::idCounter++), promiseStatus(inProgressState), promiseChildType(NullType) {
+    BasePromise(): promiseStatus(inProgressState), promiseChildType(NullType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
         
         BasePromise::addPromiseToArray(BasePromise::allPromises, &this);
     };
-    BasePromise(BasePromise* parent, PromiseChildType childType): id(BasePromise::idCounter++), promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
+    BasePromise(BasePromise* parent, PromiseChildType childType): promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
 
@@ -394,23 +393,6 @@ protected:
         int currentSize = ArraySize(array);
         ArrayResize(array, currentSize + 1, MathMax(currentSize/10, 10));
         array[currentSize] = promise;
-    }
-
-    static BasePromise* getPromiseByID(ulong id) {
-        int left = 0;
-        int right = ArraySize(BasePromise::allPromises) - 1;
-
-        while (left <= right) {
-            int mid = left + (right - left) / 2;
-            if (BasePromise::allPromises[mid].id == id) return BasePromise::allPromises[mid];
-            if (BasePromise::allPromises[mid].id < id) {
-                left = mid + 1;
-                continue;
-            }
-            right = mid - 1;
-        }
-
-        return NULL;
     }
 
     static void destroy(BasePromise* promise) {
@@ -451,7 +433,6 @@ protected:
     };
 };
 
-ulong BasePromise::idCounter = 0;
 int BasePromise::deletedPromiseCounter = 0;
 BasePromise* BasePromise::allPromises[];
 BasePromise::PromiseInitializerAndDestructor basePromiseInitializerAndDestructor;
@@ -469,7 +450,7 @@ public:
         if (!this._alreadyResolved) {
             this._rejectValue = rejectParam;
             this._alreadyResolved = true;
-            this.resolveWithParam = true;
+            this._resolveWithParam = true;
             this._basePromise._rejectHandler();
         }
     };
@@ -493,7 +474,7 @@ public:
         if (!this._alreadyResolved) {
             this._value = resolveParam;
             this._alreadyResolved = true;
-            this.resolveWithParam = true;
+            this._resolveWithParam = true;
             this._basePromise._resolveHandler();
         }
     };
