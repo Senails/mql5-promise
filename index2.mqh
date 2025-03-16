@@ -493,7 +493,7 @@ protected: // callbacks
     };
 public: // callbacks
     static void _resolveParamCallback(PromiseResolver<T2>* resolver, string prev, T2 param) { resolver.resolve(param); };
-
+    static void _rejectParamCallback(PromiseResolver<string>* resolver, string prev, string param) { resolver.reject(param); };
 };
 
 class Promisee: public TypedPromise<string, string, string> {
@@ -510,6 +510,8 @@ class Promisee: public TypedPromise<string, string, string> {
     template<typename T2>
     static TypedPromise<string, T2, T2>* resolve(T2 param) { return new TypedPromise<string, T2, T2>(TypedPromise<string, T2, T2>::_resolveParamCallback, param); };
     static TypedPromise<string, string, string>* resolve() { return new TypedPromise<string, string, string>(TypedPromise<string, string, string>::_resolveParamCallback, ""); };
+
+    static TypedPromise<string, string, string>* reject(string message = "") { return new TypedPromise<string, string, string>(TypedPromise<string, string, string>::_rejectParamCallback, ""); };
 
     template<typename T1, typename T2, typename T3>
     static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutPrevResult<T1, T2, T3>* call)      { return new TypedPromise<T1, T2, T3>(call); };

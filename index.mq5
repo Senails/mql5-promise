@@ -14,11 +14,9 @@ void callback1(PromiseResolver<int>* resolver) {
     Print("prev: " + "string(prev)");
 
     Promisee::resolve()
-        .resolveResolver(resolver)
+        .resolveResolver(resolver, 321)
         .destroy();
 };
-
-void callback3(PromiseResolver<int>* resolver) { resolver.resolve(); };
 
 void callback2(PromiseResolver<string>* resolver, int prev) {
     Print("prev: " + string(prev));
