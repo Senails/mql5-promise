@@ -1,24 +1,30 @@
+#ifdef mql5PromiseDev
+   #include "node_modules/mql5-timer/index.mqh";
+#else
+   #include "../mql5-timer/index.mqh";
+#endif
+
 template<typename T>
-class TypedPromiseResolver;
+class PromiseResolver;
 
 template<typename T1, typename T2, typename T3>
 class TypedCallbackWithoutPrevResult {
 public:
-    typedef void (*CallbackWithoutPrevResult)(TypedPromiseResolver<T2>*);
+    typedef void (*CallbackWithoutPrevResult)(PromiseResolver<T2>*);
     CallbackWithoutPrevResult callback;
     TypedCallbackWithoutPrevResult(CallbackWithoutPrevResult c): callback(c) {};
 };
 template<typename T1, typename T2, typename T3>
 class TypedCallbackWithoutParam {
 public:
-    typedef void (*CallbackWithoutParam)(TypedPromiseResolver<T2>*, T1);
+    typedef void (*CallbackWithoutParam)(PromiseResolver<T2>*, T1);
     CallbackWithoutParam callback;
     TypedCallbackWithoutParam(CallbackWithoutParam c): callback(c) {};
 };
 template<typename T1, typename T2, typename T3>
 class TypedCallbackWithParam {
 public:
-    typedef void (*CallbackWithParam)(TypedPromiseResolver<T2>*, T1, T3);
+    typedef void (*CallbackWithParam)(PromiseResolver<T2>*, T1, T3);
     CallbackWithParam callback;
     TypedCallbackWithParam(CallbackWithParam c): callback(c) {};
 };
@@ -93,8 +99,6 @@ protected: // utils
         promise.promiseStatus = DeletedState;
         BasePromise::deletedPromiseCounter++;
 
-        Print("BasePromise::destroy");
-
         for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
             BasePromise* parentPromise = promise.parentPromises[i];
             BasePromise::removePromiseFromArray(parentPromise.childPromises, promise);
@@ -133,13 +137,13 @@ int BasePromise::deletedPromiseCounter = 0;
 BasePromise* BasePromise::allPromises[];
 BasePromise::PromiseInitializerAndDestructor basePromiseInitializerAndDestructor;
 
-class BaseTypedPromiseResolver {
+class BasePromiseResolver {
 public:
     BasePromise* _basePromise;
     string _rejectValue;
     bool _alreadyResolved;
 
-    BaseTypedPromiseResolver(BasePromise* promise): _basePromise(promise), _alreadyResolved(false){};
+    BasePromiseResolver(BasePromise* promise): _basePromise(promise), _alreadyResolved(false){};
 
     void reject(string rejectParam) {
         if (!this._alreadyResolved) {
@@ -158,11 +162,11 @@ public:
 };
 
 template<typename T>
-class TypedPromiseResolver: public BaseTypedPromiseResolver{
+class PromiseResolver: public BasePromiseResolver{
 public:
     T _value;
 
-    TypedPromiseResolver(BasePromise* promise): BaseTypedPromiseResolver(promise) {};
+    PromiseResolver(BasePromise* promise): BasePromiseResolver(promise) {};
 
     void resolve(T resolveParam) {
         if (!this._alreadyResolved) {
@@ -186,24 +190,24 @@ template<typename T1, typename T2, typename T3>
 class TypedPromise: public BasePromise {
 private: // types
     // callback for current promise
-    typedef void (*CallbackWithoutPrevResult)(TypedPromiseResolver<T2>*);
-    typedef void (*CallbackWithoutParam)(TypedPromiseResolver<T2>*, T1);
-    typedef void (*CallbackWithParam)(TypedPromiseResolver<T2>*, T1, T3);
+    typedef void (*CallbackWithoutPrevResult)(PromiseResolver<T2>*);
+    typedef void (*CallbackWithoutParam)(PromiseResolver<T2>*, T1);
+    typedef void (*CallbackWithParam)(PromiseResolver<T2>*, T1, T3);
 
     // default callback for then promise
-    typedef void (*ThenCallbackWithoutPrevResult)(TypedPromiseResolver<string>*);
-    typedef void (*ThenCallbackWithoutParam)(TypedPromiseResolver<string>*, T2);
-    typedef void (*ThenCallbackWithParam)(TypedPromiseResolver<string>*, T2, string);
+    typedef void (*ThenCallbackWithoutPrevResult)(PromiseResolver<string>*);
+    typedef void (*ThenCallbackWithoutParam)(PromiseResolver<string>*, T2);
+    typedef void (*ThenCallbackWithParam)(PromiseResolver<string>*, T2, string);
 
     // default callback for catch promise
-    typedef void (*CatchCallbackWithoutPrevResult)(TypedPromiseResolver<T2>*);
-    typedef void (*CatchCallbackWithoutParam)(TypedPromiseResolver<T2>*, string);
-    typedef void (*CatchCallbackWithParam)(TypedPromiseResolver<T2>*, string, string);
+    typedef void (*CatchCallbackWithoutPrevResult)(PromiseResolver<T2>*);
+    typedef void (*CatchCallbackWithoutParam)(PromiseResolver<T2>*, string);
+    typedef void (*CatchCallbackWithParam)(PromiseResolver<T2>*, string, string);
 
     // default callback for finally promise
-    typedef void (*FinallyCallbackWithoutPrevResult)(TypedPromiseResolver<string>*);
-    typedef void (*FinallyCallbackWithoutParam)(TypedPromiseResolver<string>*, string);
-    typedef void (*FinallyCallbackWithParam)(TypedPromiseResolver<string>*, string, string);
+    typedef void (*FinallyCallbackWithoutPrevResult)(PromiseResolver<string>*);
+    typedef void (*FinallyCallbackWithoutParam)(PromiseResolver<string>*, string);
+    typedef void (*FinallyCallbackWithParam)(PromiseResolver<string>*, string, string);
     
 public: // create callback
     static TypedCallbackWithoutPrevResult<T1,T2,T3>* callback(CallbackWithoutPrevResult call)   { return new TypedCallbackWithoutPrevResult<T1,T2,T3>(call); };
@@ -211,10 +215,10 @@ public: // create callback
     static TypedCallbackWithParam<T1,T2,T3>* callback(CallbackWithParam call)                   { return new TypedCallbackWithParam<T1,T2,T3>(call); };
 
 private: // fields
-    TypedPromiseResolver<T2>* resolver;
-    TypedPromiseResolver<T1>* parentResolver;
-    BaseTypedPromiseResolver* baseParentResolver;
-    TypedPromiseResolver<T2>* parentResolverWithTheSameType;
+    PromiseResolver<T2>* resolver;
+    PromiseResolver<T1>* parentResolver;
+    BasePromiseResolver* baseParentResolver;
+    PromiseResolver<T2>* parentResolverWithTheSameType;
 
     TypedCallbackWithParam<T1, T2, T3>* callbackWithParam;
     TypedCallbackWithoutParam<T1, T2, T3>* callbackWithoutParam;
@@ -229,39 +233,39 @@ private: // fields
     T3 param;
 
 public: // public constructor
-    TypedPromise(CallbackWithoutPrevResult call): BasePromise(), callbackWithoutPrevResult(TypedPromise::callback(call)), withoutParam(true), withoutPrevResult(true)               { this.init(); };
-    TypedPromise(CallbackWithoutParam call): BasePromise(), callbackWithoutParam(TypedPromise::callback(call)), withoutParam(true), withoutPrevResult(false)                        { this.init(); };
-    TypedPromise(CallbackWithParam call, T3 paramm): BasePromise(), callbackWithParam(TypedPromise::callback(call)), param(paramm), withoutParam(false), withoutPrevResult(false)   { this.init(); };
+    TypedPromise(CallbackWithoutPrevResult call): BasePromise(), callbackWithoutPrevResult(TypedPromise<T1, T2, T3>::callback(call)), withoutParam(true), withoutPrevResult(true)               { this.init(); };
+    TypedPromise(CallbackWithoutParam call): BasePromise(), callbackWithoutParam(TypedPromise<T1, T2, T3>::callback(call)), withoutParam(true), withoutPrevResult(false)                        { this.init(); };
+    TypedPromise(CallbackWithParam call, T3 paramm): BasePromise(), callbackWithParam(TypedPromise<T1, T2, T3>::callback(call)), param(paramm), withoutParam(false), withoutPrevResult(false)   { this.init(); };
 
-    TypedPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call): BasePromise(), callbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true)                     { this.init(); };
-    TypedPromise(TypedCallbackWithoutParam<T1, T2, T3>* call): BasePromise(), callbackWithoutParam(call), withoutParam(true), withoutPrevResult(false)                              { this.init(); };
-    TypedPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm): BasePromise(), callbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false)         { this.init(); };
+    TypedPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call): BasePromise(), callbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true)                                 { this.init(); };
+    TypedPromise(TypedCallbackWithoutParam<T1, T2, T3>* call): BasePromise(), callbackWithoutParam(call), withoutParam(true), withoutPrevResult(false)                                          { this.init(); };
+    TypedPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm): BasePromise(), callbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false)                     { this.init(); };
 
 public: // static method constructor
-    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call, TypedPromiseResolver<T1>* pResolver)             { return new TypedPromise<T1, T2, T3>(call, pResolver); };
-    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithoutParam<T1, T2, T3>* call, TypedPromiseResolver<T1>* pResolver)                  { return new TypedPromise<T1, T2, T3>(call, pResolver); };
-    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm, TypedPromiseResolver<T1>* pResolver)          { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver); };
+    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call, PromiseResolver<T1>* pResolver)             { return new TypedPromise<T1, T2, T3>(call, pResolver); };
+    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithoutParam<T1, T2, T3>* call, PromiseResolver<T1>* pResolver)                  { return new TypedPromise<T1, T2, T3>(call, pResolver); };
+    static TypedPromise<T1, T2, T3>* _createThenChildPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm, PromiseResolver<T1>* pResolver)          { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver); };
 
-    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, TypedPromiseResolver<T2>* pResolver)        { return new TypedPromise<T1, T2, T3>(call, pResolver, true); };
-    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithoutParam<string, T2, T3>* call, TypedPromiseResolver<T2>* pResolver)             { return new TypedPromise<T1, T2, T3>(call, pResolver, true); };
-    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, TypedPromiseResolver<T2>* pResolver)     { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver, true); };
+    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, PromiseResolver<T2>* pResolver)        { return new TypedPromise<T1, T2, T3>(call, pResolver, true); };
+    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithoutParam<string, T2, T3>* call, PromiseResolver<T2>* pResolver)             { return new TypedPromise<T1, T2, T3>(call, pResolver, true); };
+    static TypedPromise<T1, T2, T3>* _createCatchChildPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, PromiseResolver<T2>* pResolver)     { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver, true); };
 
-    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, BaseTypedPromiseResolver* pResolver)      { return new TypedPromise<T1, T2, T3>(call, pResolver, true, true); };
-    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithoutParam<string, T2, T3>* call, BaseTypedPromiseResolver* pResolver)           { return new TypedPromise<T1, T2, T3>(call, pResolver, true, true); };
-    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, BaseTypedPromiseResolver* pResolver)   { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver, true, true); };
+    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, BasePromiseResolver* pResolver)      { return new TypedPromise<T1, T2, T3>(call, pResolver, true, true); };
+    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithoutParam<string, T2, T3>* call, BasePromiseResolver* pResolver)           { return new TypedPromise<T1, T2, T3>(call, pResolver, true, true); };
+    static TypedPromise<T1, T2, T3>* _createFinallyChildPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, BasePromiseResolver* pResolver)   { return new TypedPromise<T1, T2, T3>(call, paramm, pResolver, true, true); };
 
 private: // private constructor
-    TypedPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call, TypedPromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true) , parentResolver(pResolver)                                                { this.init(); };
-    TypedPromise(TypedCallbackWithoutParam<T1, T2, T3>* call, TypedPromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), parentResolver(pResolver)                                                          { this.init(); };
-    TypedPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm, TypedPromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), parentResolver(pResolver)                                     { this.init(); };
+    TypedPromise(TypedCallbackWithoutPrevResult<T1, T2, T3>* call, PromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true) , parentResolver(pResolver)                                                { this.init(); };
+    TypedPromise(TypedCallbackWithoutParam<T1, T2, T3>* call, PromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), parentResolver(pResolver)                                                          { this.init(); };
+    TypedPromise(TypedCallbackWithParam<T1, T2, T3>* call, T3 paramm, PromiseResolver<T1>* pResolver): BasePromise(pResolver._basePromise, ThenType), callbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), parentResolver(pResolver)                                     { this.init(); };
 
-    TypedPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, TypedPromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true), parentResolverWithTheSameType(pResolver)               { this.init(); };
-    TypedPromise(TypedCallbackWithoutParam<string, T2, T3>* call, TypedPromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), parentResolverWithTheSameType(pResolver)                        { this.init(); };
-    TypedPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, TypedPromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), parentResolverWithTheSameType(pResolver)   { this.init(); };
+    TypedPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, PromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true), parentResolverWithTheSameType(pResolver)               { this.init(); };
+    TypedPromise(TypedCallbackWithoutParam<string, T2, T3>* call, PromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), parentResolverWithTheSameType(pResolver)                        { this.init(); };
+    TypedPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, PromiseResolver<T2>* pResolver, bool _): BasePromise(pResolver._basePromise, CatchType), simpleCallbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), parentResolverWithTheSameType(pResolver)   { this.init(); };
 
-    TypedPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, BaseTypedPromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true), baseParentResolver(pResolver)               { this.init(); };
-    TypedPromise(TypedCallbackWithoutParam<string, T2, T3>* call, BaseTypedPromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), baseParentResolver(pResolver)                        { this.init(); };
-    TypedPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, BaseTypedPromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), baseParentResolver(pResolver)   { this.init(); };
+    TypedPromise(TypedCallbackWithoutPrevResult<string, T2, T3>* call, BasePromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithoutPrevResult(call), withoutParam(true), withoutPrevResult(true), baseParentResolver(pResolver)               { this.init(); };
+    TypedPromise(TypedCallbackWithoutParam<string, T2, T3>* call, BasePromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithoutParam(call), withoutParam(true), withoutPrevResult(false), baseParentResolver(pResolver)                        { this.init(); };
+    TypedPromise(TypedCallbackWithParam<string, T2, T3>* call, T3 paramm, BasePromiseResolver* pResolver, bool _, bool __): BasePromise(pResolver._basePromise, FinallyType), simpleCallbackWithParam(call), param(paramm), withoutParam(false), withoutPrevResult(false), baseParentResolver(pResolver)   { this.init(); };
 
 public: // then method
     TypedPromise<T2, string, string>* then(ThenCallbackWithoutPrevResult call)                          { return this.then(TypedPromise<T2,string,string>::callback(call)); };
@@ -337,10 +341,10 @@ private: // then, catch, finally, init handlers
     }
 
     void init() {
-        this.resolver = new TypedPromiseResolver<T2>(&this);
+        this.resolver = new PromiseResolver<T2>(&this);
         if (this.promiseChildType != NullType) return;
 
-        this.parentResolver = new TypedPromiseResolver<T1>(&this);
+        this.parentResolver = new PromiseResolver<T1>(&this);
         this._thenExecuteResolve();
     };
 
@@ -420,7 +424,7 @@ public: // resolve and reject handlers
     };
 
 public: // destroy and cancel
-    void destroy()  { this.finally(TypedPromise<string,string,string>::callback(TypedPromise::destroyCallback)); };
+    void destroy()  { this.finally(TypedPromise<string,string,string>::callback(TypedPromise<T1, T2, T3>::destroyCallback)); };
     void cancel()   { BasePromise::destroy(&this); };
 
     ~TypedPromise() {
@@ -433,8 +437,23 @@ public: // destroy and cancel
         delete this.simpleCallbackWithoutPrevResult;
         if (this.promiseChildType == NullType) delete this.parentResolver;
     };
-protected: // destroy
-    static void destroyCallback(TypedPromiseResolver<string>* resolver) { BasePromise::destroy(resolver._basePromise); };
+
+public: // utils
+    TypedPromise<T2, T2, int>* delay(int ms) { return this.then(TypedPromise<T2, T2, int>::callback(TypedPromise<T1, T2, T3>::delayCallback), ms); };
+
+protected: // callback
+    static void destroyCallback(
+        PromiseResolver<string>* resolver) { BasePromise::destroy(resolver._basePromise);
+    };
+
+    static void delayCallback(PromiseResolver<T2>* resolver, T2 prev, int ms) {
+        resolver._value = prev;
+        TypedTimer<PromiseResolver<T2>*>::setTimeout(TypedPromise<T1, T2, T3>::timerDelayCallback, ms, resolver);
+    };
+    static void timerDelayCallback(PromiseResolver<T2>* resolver) {
+        resolver.resolve(resolver._value);
+    };
+
 };
 
 class Promisee: public TypedPromise<string, string, string> {

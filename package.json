@@ -19,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/HommaTech/mql-simplify/issues",
     "email": "seffele@gmail.com"
+  },
+  "dependencies": {
+    "mql5-timer": "^2.1.5"
   }
 }
