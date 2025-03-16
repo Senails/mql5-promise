@@ -9,6 +9,7 @@ void OnInit() {
         .delay(3000)
         .then(callback2)
         .catch(catchCallback)
+        .tapCatch(catchCallback)
         .destroy();
 };
 
