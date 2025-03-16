@@ -444,16 +444,14 @@ class Promisee: public TypedPromise<string, string, string> {
     Promisee(CallbackWithoutParam call): TypedPromise<string, string, string>(call) {};
     Promisee(CallbackWithParam call, string p): TypedPromise<string, string, string>(call, p) {};
 
+    static TypedPromise<string, string, string>* try(CallbackWithoutPrevResult call)            { return new Promisee(call); };
+    static TypedPromise<string, string, string>* try(CallbackWithoutParam call)                 { return new Promisee(call); };
+    static TypedPromise<string, string, string>* try(CallbackWithParam call, string p)          { return new Promisee(call, p); };
+
     template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutPrevResult<T1, T2, T3>* call) {
-        return new TypedPromise<T1, T2, T3>(call);
-    };
+    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutPrevResult<T1, T2, T3>* call)      { return new TypedPromise<T1, T2, T3>(call); };
     template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutParam<T1, T2, T3>* call) {
-        return new TypedPromise<T1, T2, T3>(call);
-    };
+    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutParam<T1, T2, T3>* call)           { return new TypedPromise<T1, T2, T3>(call); };
     template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithParam<T1, T2, T3>* call, T3 param) {
-        return new TypedPromise<T1, T2, T3>(call, param);
-    };
+    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithParam<T1, T2, T3>* call, T3 param)    { return new TypedPromise<T1, T2, T3>(call, param); };
 };
