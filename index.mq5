@@ -3,11 +3,17 @@
 void OnInit() {
     Print("start");
 
-    Promisee::try(TypedPromise<int, int, int>::callback(callback1), 123);
-    // new TypedPromise<int, int, int>(TypedPromise<int, int, int>::callback(callback1), 123);
+    Promisee::try(TypedPromise<int, int, int>::callback(callback1), 123)
+        .then(callback2)
+        .destroy();
 };
 
 void callback1(TypedPromiseResolver<int>* resolver, int prev, int param) {
+    Print("param: " + string(param));
     resolver.resolve(1234);
-    resolver.reject("4321");
+};
+
+void callback2(TypedPromiseResolver<string>* resolver, int prev) {
+    Print("prev: " + string(prev));
+    resolver.resolve();
 };
