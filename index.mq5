@@ -12,8 +12,13 @@ void OnInit() {
 
 void callback1(PromiseResolver<int>* resolver) {
     Print("prev: " + "string(prev)");
-    resolver.resolve(231);
+
+    Promisee::resolve()
+        .resolveResolver(resolver)
+        .destroy();
 };
+
+void callback3(PromiseResolver<int>* resolver) { resolver.resolve(); };
 
 void callback2(PromiseResolver<string>* resolver, int prev) {
     Print("prev: " + string(prev));
