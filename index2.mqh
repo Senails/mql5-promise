@@ -31,6 +31,7 @@ public:
 
 class BasePromise {
 protected: // types
+    static int idCounter;
     static int deletedPromiseCounter;
     static BasePromise* allPromises[];
 
@@ -47,13 +48,13 @@ protected: // fields
     BasePromise* childPromises[];
 
 protected: // constructor
-    BasePromise(): promiseStatus(inProgressState), promiseChildType(NullType) {
+    BasePromise(): id(idCounter++), promiseStatus(inProgressState), promiseChildType(NullType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
         
         BasePromise::addPromiseToArray(BasePromise::allPromises, &this);
     };
-    BasePromise(BasePromise* parent, PromiseChildType childType): promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
+    BasePromise(BasePromise* parent, PromiseChildType childType): id(idCounter++), promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
 
@@ -96,15 +97,14 @@ protected: // utils
     }
 
     static void destroy(BasePromise* promise) {
-        promise.promiseStatus = DeletedState;
-        BasePromise::deletedPromiseCounter++;
-
         for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
             BasePromise* parentPromise = promise.parentPromises[i];
             BasePromise::removePromiseFromArray(parentPromise.childPromises, promise);
             if (ArraySize(parentPromise.childPromises) == 0) BasePromise::destroy(parentPromise);
         }
 
+        promise.promiseStatus = DeletedState;
+        BasePromise::deletedPromiseCounter++;
         BasePromise::cleanupAllPromises();
     };
     static void cleanupAllPromises() {
@@ -133,6 +133,7 @@ public: // initializer and destructor
     };
 };
 
+ulong BasePromise::idCounter = 0;
 int BasePromise::deletedPromiseCounter = 0;
 BasePromise* BasePromise::allPromises[];
 BasePromise::PromiseInitializerAndDestructor basePromiseInitializerAndDestructor;
@@ -382,9 +383,12 @@ private: // then, catch, finally, init handlers
 
 public: // then, catch, finally executors
     void virtual _thenExecuteResolve() override {
-        if (this.withoutPrevResult) {
+        bool withoutPrevResult_ = this.withoutPrevResult;
+        bool withoutParam_ = this.withoutParam;
+
+        if (withoutPrevResult_) {
             this.callbackWithoutPrevResult.callback(this.resolver);
-        } else if (this.withoutParam) {
+        } else if (withoutParam_) {
             this.callbackWithoutParam.callback(this.resolver, this.parentResolver._value);
         } else {
             this.callbackWithParam.callback(this.resolver, this.parentResolver._value, this.param);
@@ -401,18 +405,24 @@ public: // then, catch, finally executors
         this.resolver.resolve(this.parentResolverWithTheSameType._value);
     };
     void virtual _catchExecuteReject() override {
-        if (this.withoutPrevResult) {
+        bool withoutPrevResult_ = this.withoutPrevResult;
+        bool withoutParam_ = this.withoutParam;
+
+        if (withoutPrevResult_) {
             this.simpleCallbackWithoutPrevResult.callback(this.resolver);
-        } else if (this.withoutParam) {
+        } else if (withoutParam_) {
             this.simpleCallbackWithoutParam.callback(this.resolver, this.parentResolverWithTheSameType._rejectValue);
         } else {
             this.simpleCallbackWithParam.callback(this.resolver, this.parentResolverWithTheSameType._rejectValue, this.param);
         }
     };
     void virtual _catchExecuteRejectWaitForDelete() override {
-        if (this.withoutPrevResult) {
+        bool withoutPrevResult_ = this.withoutPrevResult;
+        bool withoutParam_ = this.withoutParam;
+
+        if (withoutPrevResult_) {
             this.simpleCallbackWithoutPrevResult.callback(this.resolver);
-        } else if (this.withoutParam) {
+        } else if (withoutParam_) {
             this.simpleCallbackWithoutParam.callback(this.resolver, "The object is awaiting deletion");
         } else {
             this.simpleCallbackWithParam.callback(this.resolver, "The object is awaiting deletion", this.param);
@@ -420,9 +430,12 @@ public: // then, catch, finally executors
     };
 
     void virtual _finallyExecuteResolve() override {
-        if (this.withoutPrevResult) {
+        bool withoutPrevResult_ = this.withoutPrevResult;
+        bool withoutParam_ = this.withoutParam;
+
+        if (withoutPrevResult_) {
             this.simpleCallbackWithoutPrevResult.callback(this.resolver);
-        } else if (this.withoutParam) {
+        } else if (withoutParam_) {
             this.simpleCallbackWithoutParam.callback(this.resolver, "");
         } else {
             this.simpleCallbackWithParam.callback(this.resolver, "", this.param);
@@ -436,10 +449,11 @@ public: // resolve and reject handlers
 
         for (int i = 0; i < ArraySize(this.childPromises); i++) {
             BasePromise* childPromise = this.childPromises[i];
-            
-            if (childPromise.promiseChildType == ThenType) childPromise._thenExecuteResolve();
-            if (childPromise.promiseChildType == CatchType) childPromise._catchExecuteResolve();
-            if (childPromise.promiseChildType == FinallyType) childPromise._finallyExecuteResolve(); 
+            PromiseChildType childTyp = childPromise.promiseChildType;
+
+            if (childTyp == ThenType) childPromise._thenExecuteResolve();
+            if (childTyp == CatchType) childPromise._catchExecuteResolve();
+            if (childTyp == FinallyType) childPromise._finallyExecuteResolve(); 
         }
     };
     void virtual _rejectHandler() override {
@@ -448,15 +462,16 @@ public: // resolve and reject handlers
 
         for (int i = 0; i < ArraySize(this.childPromises); i++) {
             BasePromise* childPromise = this.childPromises[i];
+            PromiseChildType childTyp = childPromise.promiseChildType;
 
-            if (childPromise.promiseChildType == ThenType) childPromise._thenExecuteReject();
-            if (childPromise.promiseChildType == CatchType) childPromise._catchExecuteReject();
-            if (childPromise.promiseChildType == FinallyType) childPromise._finallyExecuteResolve();
+            if (childTyp == ThenType) childPromise._thenExecuteReject();
+            if (childTyp == CatchType) childPromise._catchExecuteReject();
+            if (childTyp == FinallyType) childPromise._finallyExecuteResolve();
         }
     };
 
 public: // destroy and cancel
-    void destroy()  { this.finally(TypedPromise<string,string,string>::callback(TypedPromise::destroyCallback)); };
+    void destroy()  { this.delay(0).finally(TypedPromise<string,string,string>::callback(TypedPromise::destroyCallback)); };
     void cancel()   { BasePromise::destroy(&this); };
 
     ~TypedPromise() {
@@ -507,9 +522,7 @@ public: // utils
     // }
 
 protected: // callbacks
-    static void destroyCallback(
-        PromiseResolver<string>* resolver) { BasePromise::destroy(resolver._basePromise);
-    };
+    static void destroyCallback(PromiseResolver<string>* resolver) { BasePromise::destroy(resolver._basePromise); };
 
     static void delayCallback(PromiseResolver<T2>* resolver, T2 prev, int ms) {
         resolver._value = prev;
