@@ -29,6 +29,35 @@ public:
     TypedCallbackWithParam(CallbackWithParam c): callback(c) {};
 };
 
+class BaseCancelHandler {
+public:
+    BaseCancelHandler() {};
+    void execute() {};
+};
+
+template<typename T>
+class PromiseCancelHandler {
+public:
+    typedef void (*CancelHandlerWithoutParam)();
+    typedef void (*CancelHandlerWithParam)(T);
+
+    CancelHandlerWithoutParam callbackWithoutParam;
+    CancelHandlerWithParam callbackWithParam;
+    bool _withParam;
+    T _param;
+
+    PromiseCancelHandler(CancelHandlerWithoutParam c): BaseCancelHandler(), callbackWithoutParam(c), _withParam(false) {};
+    PromiseCancelHandler(CancelHandlerWithParam c): BaseCancelHandler(), callbackWithParam(c), _withParam(true) {};
+
+    void execute() {
+        if (this._withParam) {
+            callbackWithParam(_param);
+        } else {
+            callbackWithoutParam();
+        }
+    };
+};
+
 class BasePromise {
 protected: // types
     static ulong idCounter;
@@ -38,6 +67,9 @@ protected: // types
     enum PromiseStatusTypes { ResolvedState, RejectedState, inProgressState, DeletedState };
     enum PromiseChildType { ThenType, CatchType, FinallyType, NullType };
 
+    typedef void (*CancelHandlerWithoutParam)();
+    typedef void (*CancelHandlerWithStringParam)(string);
+
 protected: // fields
     ulong id;
     PromiseStatusTypes promiseStatus;
@@ -46,21 +78,24 @@ protected: // fields
     BasePromise* parentPromise;
     BasePromise* parentPromises[];
     BasePromise* childPromises[];
+    BaseCancelHandler* cancelHandlers[];
 
 protected: // constructor
     BasePromise(): id(idCounter++), promiseStatus(inProgressState), promiseChildType(NullType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
+        ArrayResize(this.cancelHandlers, 0, 2);
         
-        BasePromise::addPromiseToArray(BasePromise::allPromises, &this);
+        BasePromise::addObjectToArray(BasePromise::allPromises, &this);
     };
     BasePromise(BasePromise* parent, PromiseChildType childType): id(idCounter++), promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
+        ArrayResize(this.cancelHandlers, 0, 2);
 
-        BasePromise::addPromiseToArray(this.parentPromises, parent);
-        BasePromise::addPromiseToArray(parent.childPromises, &this);
-        BasePromise::addPromiseToArray(BasePromise::allPromises, &this);
+        BasePromise::addObjectToArray(this.parentPromises, parent);
+        BasePromise::addObjectToArray(parent.childPromises, &this);
+        BasePromise::addObjectToArray(BasePromise::allPromises, &this);
     };
 
 public: // methods
@@ -78,12 +113,14 @@ public: // methods
     void virtual _finallyExecuteResolve() {};
 
 protected: // utils
-    static void addPromiseToArray(BasePromise* &array[], BasePromise* promise) {
+    template<typename T>
+    static void addObjectToArray(T* &array[], T* promise) {
         int currentSize = ArraySize(array);
         ArrayResize(array, currentSize + 1, MathMax(currentSize/10, 10));
         array[currentSize] = promise;
     };
-    static void removePromiseFromArray(BasePromise* &array[], BasePromise* promise) {
+    template<typename T>
+    static void removeObjectFromArray(T* &array[], T* promise) {
         int currentSize = ArraySize(array);
         for (int i = 0; i < currentSize; i++) {
             if (array[i] == promise) {
@@ -94,12 +131,12 @@ protected: // utils
                 return;
             }
         }
-    }
+    };
 
     static void destroy(BasePromise* promise) {
         for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
             BasePromise* parentPromise = promise.parentPromises[i];
-            BasePromise::removePromiseFromArray(parentPromise.childPromises, promise);
+            BasePromise::removeObjectFromArray(parentPromise.childPromises, promise);
             if (ArraySize(parentPromise.childPromises) == 0) BasePromise::destroy(parentPromise);
         }
 
@@ -511,6 +548,17 @@ public: // utils
         BasePromiseResolver* basePromiseResolver = propResolver;
         return this.then(TypedPromise<T2, T2, BasePromiseResolver*>::callback(TypedPromise::rejectResolverCallback), basePromiseResolver);
     };
+
+    void addCancelHandler(CancelHandlerWithoutParam c) {
+
+    }
+    void addCancelHandler(CancelHandlerWithStringParam c, string param) {
+        
+    }
+    template<typename TT1>
+    void addCancelHandler() {
+        
+    }
 
     // template<typename TT1>
     // TypedPromise<T2, TT1, TT1>* resolveParam(TT1 param) {
