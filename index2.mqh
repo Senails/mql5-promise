@@ -31,7 +31,7 @@ public:
 
 class BasePromise {
 protected: // types
-    static int idCounter;
+    static ulong idCounter;
     static int deletedPromiseCounter;
     static BasePromise* allPromises[];
 
