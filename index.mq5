@@ -17,7 +17,9 @@ void callback1(PromiseResolver<int>* resolver) {
     Print("prev: " + "string(prev)");
 
     Promise::resolve()
+        .resolve(231)
         .resolveResolver(resolver, 321)
+        .error("123")
         .destroy();
 };
 
