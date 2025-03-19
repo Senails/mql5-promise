@@ -58,6 +58,16 @@ public:
     };
 };
 
+
+class BaseDeleteObjectContainer {};
+template<typename T>
+class DeleteObjectContainer: public BaseDeleteObjectContainer {
+public:
+    T* obj;
+    DeleteObjectContainer(T* o): BaseDeleteObjectContainer(), obj(o) {};
+    ~DeleteObjectContainer() { delete obj; };
+};
+
 class BasePromise {
 protected: // types
     static ulong idCounter;
@@ -573,12 +583,15 @@ public: // utils
 
     template<typename TT1>
     TypedPromise<T2, TT1, TT1>* resolve(TT1 param_)             { return this.then(TypedPromise<T2, TT1, TT1>::callback(TypedPromise<T2, TT1, TT1>::_resolveParamCallback), param_); };
-    TypedPromise<T2, string, string>* error(string message)     { return this.then(TypedPromise<T2, string, string>::callback(TypedPromise<T2, string, string>::_resolveParamCallback), message); };
+    TypedPromise<T2, T2, string>* error(string message)         { return this.then(TypedPromise<T2, T2, string>::callback(TypedPromise<T2, T2, string>::_rejectParamCallback), message); };
 
     template<typename TT1>
-    TypedPromise<T2, T2, TT1*>* deleteObject(TT1* object) {
-        return this.then(TypedPromise<T2, T2, TT1*>::callback(TypedPromise::<TT1>_deleteObjectAndResolve), object);
-    }
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* deleteObject(TT1* object) {
+        BaseDeleteObjectContainer* baseDeleteObjectContainer = new DeleteObjectContainer<TT1>(object);
+        return this
+            .tapCatch(TypedPromise<string, T2, BaseDeleteObjectContainer*>::callback(TypedPromise<string, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer)
+            .tap(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::callback(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer);
+    };
 
 protected: // callbacks
     static void destroyCallback(PromiseResolver<string>* resolver) { BasePromise::destroy(resolver._basePromise); };
@@ -602,7 +615,7 @@ protected: // callbacks
 
 public: // callbacks
     static void _resolveParamCallback(PromiseResolver<T2>* resolver, T1 prev, T2 param) { resolver.resolve(param); };
-    static void _rejectParamCallback(PromiseResolver<string>* resolver, T1 prev, string param) { resolver.reject(param); };
+    static void _rejectParamCallback(PromiseResolver<T2>* resolver, T1 prev, string param) { resolver.reject(param); };
 
     static void _resolveResolverValue(PromiseResolver<T2>* resolver, T1 prev, PromiseResolver<T2>* propResolver) { resolver.resolve(propResolver._value); };
     static void _rejectResolverValueIfNeeded(PromiseResolver<T2>* resolver, string prev, PromiseResolver<T2>* propResolver) {
@@ -613,10 +626,9 @@ public: // callbacks
         }
     };
 
-    template<typename TT1>
-    static void _deleteObjectAndResolve(PromiseResolver<T2>* resolver, T2 prev, TT1* paramObject) {
-        delete param;
-        resolver.resolve(prev);
+    static void _deleteObjectAndResolve(PromiseResolver<T2>* resolver, T1 prev, BaseDeleteObjectContainer* paramObject) {
+        delete paramObject;
+        resolver.resolve();
     };
 };
 

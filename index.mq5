@@ -4,12 +4,16 @@
 void OnInit() {
     Print("start");
 
+    BaseDeleteObjectContainer* obj = new BaseDeleteObjectContainer();
+
     Promise::try(TypedPromise<int, int, int>::callback(callback1))
         .tap(tapCallback)
         .delay(3000)
-        .then(callback2)
+        .then(TypedPromise<int, int, int>::callback(callback2)) // TypedPromise<int, int, int>::callback(callback2)
         .catch(catchCallback)
+        .error("123")
         .tapCatch(catchCallback)
+        .deleteObject(obj)
         .destroy();
 };
 
@@ -23,9 +27,9 @@ void callback1(PromiseResolver<int>* resolver) {
         .destroy();
 };
 
-void callback2(PromiseResolver<string>* resolver, int prev) {
+void callback2(PromiseResolver<int>* resolver, int prev) {
     Print("prev: " + string(prev));
-    resolver.resolve();
+    resolver.resolve(1);
 };
 
 void tapCallback(PromiseResolver<string>* resolver) {
@@ -33,7 +37,7 @@ void tapCallback(PromiseResolver<string>* resolver) {
     resolver.resolve();
 }
 
-void catchCallback(PromiseResolver<string>* resolver) {
+void catchCallback(PromiseResolver<int>* resolver) {
     Print("catchCallback ");
-    resolver.resolve("catchCallback");
+    resolver.resolve(231);
 }
