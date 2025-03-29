@@ -24,6 +24,7 @@ void callback1(PromiseResolver<int>* resolver) {
     Promise::resolve()
         .resolve(231)
         .resolveResolver(resolver, 321)
+        .returnPromise()
         .error("123")
         .destroy();
 };

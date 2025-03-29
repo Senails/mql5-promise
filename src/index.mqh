@@ -4,8 +4,8 @@
    #include "../../mql5-timer/index.mqh";
 #endif
 
-#include "Callback.mqh";
-#include "DeleteObjectContainer.mqh";
+#include "Callbacks.mqh";
+#include "Containers.mqh";
 #include "BasePromise.mqh";
 #include "PromiseResolver.mqh";
 #include "TypedPromise.mqh";
