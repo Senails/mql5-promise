@@ -471,6 +471,23 @@ public: // .addCancelHandler()
         return &this;
     };
 
+public: // .executeSyncCallback()
+    TypedPromise* executeSyncCallback(SimpleCallbackWithoutParam c)                      {
+        return this.executeSyncCallback(TypedPromise<string, string, string>::callbackWithParam(c));
+    };
+    TypedPromise* executeSyncCallback(SimpleCallbackWithStringParam c, string param_)    {
+        return this.executeSyncCallback(TypedPromise<string, string, string>::callbackWithParam(c), param_);
+    };
+    
+    template<typename TT1>
+    TypedPromise* executeSyncCallback(TypedPromiseCallback<TT1>* handler) {
+        
+    };
+    template<typename TT1>
+    TypedPromise* executeSyncCallback(TypedPromiseCallback<TT1>* handler, TT1 param_) {
+        
+    };
+
 public: // .resolve()
     template<typename TT1>
     TypedPromise<T2, TT1, TT1>* resolve(TT1 param_) {

@@ -8,6 +8,9 @@ void OnInit() {
 
     Promise::try(TypedPromise<int, int, int>::promiseCallback(callback1))
         .tap(tapCallback)
+        .addCancelHandler(cancelHandler1)
+        .addCancelHandler(cancelHandler2, "text for cancelHandler2")
+        .addCancelHandler(TypedPromise<int, int, int>::callbackWithParam(cancelHandler3), 5)
         .delay(3000)
         .then(TypedPromise<int, int, int>::promiseCallback(callback2)) // TypedPromise<int, int, int>::promiseCallback(callback2)
         .catch(catchCallback)
@@ -40,4 +43,18 @@ void tapCallback(PromiseResolver<string>* resolver) {
 void catchCallback(PromiseResolver<int>* resolver) {
     Print("catchCallback ");
     resolver.resolve(231);
+}
+
+
+
+void cancelHandler1() {
+    Print("cancelHandler1");
+}
+
+void cancelHandler2(string text) {
+    Print("cancelHandler2", text);
+}
+
+void cancelHandler3(int num) {
+    Print("cancelHandler2", string(num));
 }
