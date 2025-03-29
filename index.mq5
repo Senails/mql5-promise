@@ -6,10 +6,10 @@ void OnInit() {
 
     BaseDeleteObjectContainer* obj = new BaseDeleteObjectContainer();
 
-    Promise::try(TypedPromise<int, int, int>::callback(callback1))
+    Promise::try(TypedPromise<int, int, int>::promiseCallback(callback1))
         .tap(tapCallback)
         .delay(3000)
-        .then(TypedPromise<int, int, int>::callback(callback2)) // TypedPromise<int, int, int>::callback(callback2)
+        .then(TypedPromise<int, int, int>::promiseCallback(callback2)) // TypedPromise<int, int, int>::promiseCallback(callback2)
         .catch(catchCallback)
         .error("123")
         .tapCatch(catchCallback)

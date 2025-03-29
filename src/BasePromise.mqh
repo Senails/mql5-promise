@@ -17,7 +17,7 @@ protected: // fields
     BasePromise* childPromises[];
     BasePromiseCallback* cancelHandlers[];
 
-protected: // constructor
+protected: // BasePromise()
     BasePromise(): id(idCounter++), promiseStatus(inProgressState), promiseChildType(NullType) {
         ArrayResize(this.parentPromises, 0, 2);
         ArrayResize(this.childPromises, 0, 2);
@@ -35,7 +35,7 @@ protected: // constructor
         BasePromise::addObjectToArray(BasePromise::allPromises, &this);
     };
 
-public: // methods
+public: // virtual methods
     void virtual _resolveHandler() {};
     void virtual _rejectHandler() {};
 
@@ -49,13 +49,15 @@ public: // methods
 
     void virtual _finallyExecuteResolve() {};
 
-protected: // utils
+protected: // BasePromise::addObjectToArray()
     template<typename T>
     static void addObjectToArray(T* &array[], T* promise) {
         int currentSize = ArraySize(array);
         ArrayResize(array, currentSize + 1, MathMax(currentSize/10, 10));
         array[currentSize] = promise;
     };
+
+protected: // BasePromise::removeObjectFromArray()   
     template<typename T>
     static void removeObjectFromArray(T* &array[], T* promise) {
         int currentSize = ArraySize(array);
@@ -70,6 +72,7 @@ protected: // utils
         }
     };
 
+protected: // BasePromise::destroy()
     static void destroy(BasePromise* promise) {
         for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
             BasePromise* parentPromise = promise.parentPromises[i];
@@ -81,6 +84,8 @@ protected: // utils
         BasePromise::deletedPromiseCounter++;
         BasePromise::cleanupAllPromises();
     };
+
+protected: // BasePromise::cleanupAllPromises()
     static void cleanupAllPromises() {
         int allPromiseCount = ArraySize(BasePromise::allPromises);
 
@@ -100,9 +105,9 @@ protected: // utils
         }
     };
 
-public: // initializer and destructor
+public: // BasePromise::PromiseInitializerAndDestructor
     class PromiseInitializerAndDestructor {
-    public:
+    public: // ~PromiseInitializerAndDestructor()
         ~PromiseInitializerAndDestructor() { for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) delete BasePromise::allPromises[i]; }
     };
 };
