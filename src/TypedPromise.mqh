@@ -520,10 +520,9 @@ public: // .resolve()
         resolver.resolve(param);
     };
 
-public: // .return()
-    TypedPromise<string, string, string>* returnPromise() {
-        return this.resolve("")
-            .resolve("");
+public: // .returnDefaultPromise()
+    TypedPromise<string, string, string>* returnDefaultPromise() {
+        return this.resolve("").resolve("");
     }
 
 public: // .error() 

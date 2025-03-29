@@ -24,10 +24,18 @@ void callback1(PromiseResolver<int>* resolver) {
     Promise::resolve()
         .resolve(231)
         .resolveResolver(resolver, 321)
-        .returnPromise()
+        .returnDefaultPromise()
         .error("123")
+        .then(returnCatchCallback)
         .destroy();
 };
+
+
+void returnCatchCallback(PromiseResolver<string>* resolver, string prev) {
+    Print("returnCatchCallback: " + prev);
+    resolver.resolve();
+}
+
 
 void callback2(PromiseResolver<int>* resolver, int prev) {
     Print("prev: " + string(prev));
