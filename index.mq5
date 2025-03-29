@@ -4,7 +4,7 @@
 void OnInit() {
     Print("start");
 
-    BaseDeleteObjectContainer* obj = new BaseDeleteObjectContainer();
+    BasePromiseDeleteObjectContainer* obj = new BasePromiseDeleteObjectContainer();
 
     Promise::try(TypedPromise<int, int, int>::promiseCallback(callback1))
         .tap(tapCallback)

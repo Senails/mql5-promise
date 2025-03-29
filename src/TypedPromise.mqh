@@ -538,19 +538,19 @@ public: // .error()
 public: // .deleteObject() 
     template<typename TT1>
     TypedPromise<T2, T2, PromiseResolver<T2>*>* deleteObject(TT1* object) {
-        BaseDeleteObjectContainer* baseDeleteObjectContainer = new DeleteObjectContainer<TT1>(object);
+        BasePromiseDeleteObjectContainer* BasePromiseDeleteObjectContainer = new PromiseDeleteObjectContainer<TT1>(object);
         return this
-            .addCancelHandler(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::callbackWithParam(TypedPromise::_deleteObject), baseDeleteObjectContainer)
-            .tapCatch(TypedPromise<string, T2, BaseDeleteObjectContainer*>::promiseCallback(TypedPromise<string, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer)
-            .tap(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::promiseCallback(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer);
+            .addCancelHandler(TypedPromise<T2, T2, BasePromiseDeleteObjectContainer*>::callbackWithParam(TypedPromise::_deleteObject), BasePromiseDeleteObjectContainer)
+            .tapCatch(TypedPromise<string, T2, BasePromiseDeleteObjectContainer*>::promiseCallback(TypedPromise<string, T2, BasePromiseDeleteObjectContainer*>::_deleteObjectAndResolve), BasePromiseDeleteObjectContainer)
+            .tap(TypedPromise<T2, T2, BasePromiseDeleteObjectContainer*>::promiseCallback(TypedPromise<T2, T2, BasePromiseDeleteObjectContainer*>::_deleteObjectAndResolve), BasePromiseDeleteObjectContainer);
     };
 
-    static void _deleteObjectAndResolve(PromiseResolver<T2>* resolver, T1 prev, BaseDeleteObjectContainer* paramObject) {
+    static void _deleteObjectAndResolve(PromiseResolver<T2>* resolver, T1 prev, BasePromiseDeleteObjectContainer* paramObject) {
         delete paramObject;
         resolver.resolve();
     };
 
-    static void _deleteObject(BaseDeleteObjectContainer* paramObject) {
+    static void _deleteObject(BasePromiseDeleteObjectContainer* paramObject) {
         delete paramObject;
     };
 };

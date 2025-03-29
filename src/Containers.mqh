@@ -1,15 +1,15 @@
-class BaseDeleteObjectContainer {};
+class BasePromiseDeleteObjectContainer {};
 
 template<typename T>
-class DeleteObjectContainer: public BaseDeleteObjectContainer {
+class PromiseDeleteObjectContainer: public BasePromiseDeleteObjectContainer {
 public: // fields
     T* obj;
 
-public: // DeleteObjectContainer()
-    DeleteObjectContainer(T* o): BaseDeleteObjectContainer(), obj(o) {};
+public: // PromiseDeleteObjectContainer()
+    PromiseDeleteObjectContainer(T* o): BasePromiseDeleteObjectContainer(), obj(o) {};
 
-public: // ~DeleteObjectContainer()
-    ~DeleteObjectContainer() { delete obj; };
+public: // ~PromiseDeleteObjectContainer()
+    ~PromiseDeleteObjectContainer() { delete obj; };
 };
 
 template<typename T>
