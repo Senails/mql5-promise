@@ -2,25 +2,25 @@ template<typename T>
 class PromiseResolver;
 
 template<typename T1, typename T2, typename T3>
-class TypedCallbackWithoutPrevResult {
+class TypedPromiseCallbackWithoutPrevResult {
 public:
     typedef void (*CallbackWithoutPrevResult)(PromiseResolver<T2>*);
     CallbackWithoutPrevResult callback;
-    TypedCallbackWithoutPrevResult(CallbackWithoutPrevResult c): callback(c) {};
+    TypedPromiseCallbackWithoutPrevResult(CallbackWithoutPrevResult c): callback(c) {};
 };
 template<typename T1, typename T2, typename T3>
-class TypedCallbackWithoutParam {
+class TypedPromiseCallbackWithoutParam {
 public:
     typedef void (*CallbackWithoutParam)(PromiseResolver<T2>*, T1);
     CallbackWithoutParam callback;
-    TypedCallbackWithoutParam(CallbackWithoutParam c): callback(c) {};
+    TypedPromiseCallbackWithoutParam(CallbackWithoutParam c): callback(c) {};
 };
 template<typename T1, typename T2, typename T3>
-class TypedCallbackWithParam {
+class TypedPromiseCallbackWithParam {
 public:
     typedef void (*CallbackWithParam)(PromiseResolver<T2>*, T1, T3);
     CallbackWithParam callback;
-    TypedCallbackWithParam(CallbackWithParam c): callback(c) {};
+    TypedPromiseCallbackWithParam(CallbackWithParam c): callback(c) {};
 };
 
 class BasePromiseCallback {
