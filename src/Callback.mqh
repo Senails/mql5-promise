@@ -42,7 +42,7 @@ public: // BasePromiseCallback()
     BasePromiseCallback() {};
 
 public: // .execute()
-    void execute() {};
+    void virtual execute() {};
 };
 
 template<typename T>
@@ -62,7 +62,7 @@ public: // TypedPromiseCallback()
     TypedPromiseCallback(CancelHandlerWithParam c): BasePromiseCallback(), callbackWithParam(c), _withParam(true) {};
 
 public: // .execute()
-    void execute() {
+    void virtual execute() override {
         if (this._withParam) {
             callbackWithParam(_param);
         } else {

@@ -35,6 +35,14 @@ protected: // BasePromise()
         BasePromise::addObjectToArray(BasePromise::allPromises, &this);
     };
 
+public: // ~BasePromise()
+    virtual ~BasePromise() {
+        int cancelHandlersCount = ArraySize(this.cancelHandlers);
+        for (int i = cancelHandlersCount - 1; i >= 0; i--) {
+            delete this.cancelHandlers[i];
+        }
+    };
+
 public: // virtual methods
     void virtual _resolveHandler() {};
     void virtual _rejectHandler() {};
@@ -108,7 +116,11 @@ protected: // BasePromise::cleanupAllPromises()
 public: // BasePromise::PromiseInitializerAndDestructor
     class PromiseInitializerAndDestructor {
     public: // ~PromiseInitializerAndDestructor()
-        ~PromiseInitializerAndDestructor() { for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) delete BasePromise::allPromises[i]; }
+        ~PromiseInitializerAndDestructor() {
+            for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) {
+                delete BasePromise::allPromises[i];
+            }
+        }
     };
 };
 

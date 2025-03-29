@@ -472,20 +472,32 @@ public: // .addCancelHandler()
     };
 
 public: // .executeSyncCallback()
-    TypedPromise* executeSyncCallback(SimpleCallbackWithoutParam c)                      {
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* executeSyncCallback(SimpleCallbackWithoutParam c)                      {
         return this.executeSyncCallback(TypedPromise<string, string, string>::callbackWithParam(c));
     };
-    TypedPromise* executeSyncCallback(SimpleCallbackWithStringParam c, string param_)    {
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* executeSyncCallback(SimpleCallbackWithStringParam c, string param_)    {
         return this.executeSyncCallback(TypedPromise<string, string, string>::callbackWithParam(c), param_);
     };
     
     template<typename TT1>
-    TypedPromise* executeSyncCallback(TypedPromiseCallback<TT1>* handler) {
-        
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* executeSyncCallback(TypedPromiseCallback<TT1>* handler) {
+        BasePromiseCallback* baseHandler = handler;
+        return this
+            .then(TypedPromise<T2, T2, BasePromiseCallback*>::promiseCallback(TypedPromise::_executeSyncCallbackHandler), baseHandler)
+            .deleteObject(baseHandler);
     };
     template<typename TT1>
-    TypedPromise* executeSyncCallback(TypedPromiseCallback<TT1>* handler, TT1 param_) {
-        
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* executeSyncCallback(TypedPromiseCallback<TT1>* handler, TT1 param_) {
+        handler._param = param_;
+        BasePromiseCallback* baseHandler = handler;
+        return this
+            .then(TypedPromise<T2, T2, BasePromiseCallback*>::promiseCallback(TypedPromise::_executeSyncCallbackHandler), baseHandler)
+            .deleteObject(baseHandler);
+    };
+
+    static void _executeSyncCallbackHandler(PromiseResolver<T2>* resolver, T2 prev, BasePromiseCallback* handler) {
+        handler.execute();
+        resolver.resolve(prev);
     };
 
 public: // .resolve()
@@ -512,6 +524,7 @@ public: // .deleteObject()
     TypedPromise<T2, T2, PromiseResolver<T2>*>* deleteObject(TT1* object) {
         BaseDeleteObjectContainer* baseDeleteObjectContainer = new DeleteObjectContainer<TT1>(object);
         return this
+            .addCancelHandler(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::callbackWithParam(TypedPromise::_deleteObject), baseDeleteObjectContainer)
             .tapCatch(TypedPromise<string, T2, BaseDeleteObjectContainer*>::promiseCallback(TypedPromise<string, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer)
             .tap(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::promiseCallback(TypedPromise<T2, T2, BaseDeleteObjectContainer*>::_deleteObjectAndResolve), baseDeleteObjectContainer);
     };
@@ -519,5 +532,9 @@ public: // .deleteObject()
     static void _deleteObjectAndResolve(PromiseResolver<T2>* resolver, T1 prev, BaseDeleteObjectContainer* paramObject) {
         delete paramObject;
         resolver.resolve();
+    };
+
+    static void _deleteObject(BaseDeleteObjectContainer* paramObject) {
+        delete paramObject;
     };
 };
