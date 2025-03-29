@@ -179,13 +179,19 @@ public: // .catch()
     };
 
 public: // .catchReturn()
-    // TypedPromise<string, T2, T2>* catchReturn(string errorMessage, T2 value) {
-    //     PromiseErrorAndValueContainer<T2>* container = new PromiseErrorAndValueContainer<T2>(errorMessage, value);
-    //     return this.catch();
-    // };
+    TypedPromise<T2, T2, PromiseResolver<T2>*>* catchReturn(string errorMessage, T2 value) {
+        PromiseErrorAndValueContainer<T2>* container = new PromiseErrorAndValueContainer<T2>(errorMessage, value);
+        return this
+            .catch(TypedPromise<string, T2, PromiseErrorAndValueContainer<T2>*>::promiseCallback(TypedPromise::_resolveIfCorrectError), container)
+            .deleteObject(container);
+    };
 
-    static void _resolveIfCorrectError() {
-
+    static void _resolveIfCorrectError(PromiseResolver<T2>* resolver, string prev, PromiseErrorAndValueContainer<T2>* propResolver) {
+        if (propResolver.error == prev) {
+            resolver.resolve(propResolver.value);
+        } else {
+            resolver.reject(prev);
+        }
     };
 
 public: // .tapCatch()

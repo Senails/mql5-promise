@@ -26,6 +26,7 @@ void callback1(PromiseResolver<int>* resolver) {
         .resolveResolver(resolver, 321)
         .returnDefaultPromise()
         .error("123")
+        .catchReturn("123", "param for returnCatchCallback")
         .then(returnCatchCallback)
         .destroy();
 };
