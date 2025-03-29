@@ -1,5 +1,5 @@
 #define mql5PromiseDev "";
-#include "index2.mqh";
+#include "src/index.mqh";
 
 void OnInit() {
     Print("start");

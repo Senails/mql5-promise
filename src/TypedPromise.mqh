@@ -1,241 +1,3 @@
-#ifdef mql5PromiseDev
-   #include "node_modules/mql5-timer/index.mqh";
-#else
-   #include "../mql5-timer/index.mqh";
-#endif
-
-template<typename T>
-class PromiseResolver;
-
-template<typename T1, typename T2, typename T3>
-class TypedCallbackWithoutPrevResult {
-public:
-    typedef void (*CallbackWithoutPrevResult)(PromiseResolver<T2>*);
-    CallbackWithoutPrevResult callback;
-    TypedCallbackWithoutPrevResult(CallbackWithoutPrevResult c): callback(c) {};
-};
-template<typename T1, typename T2, typename T3>
-class TypedCallbackWithoutParam {
-public:
-    typedef void (*CallbackWithoutParam)(PromiseResolver<T2>*, T1);
-    CallbackWithoutParam callback;
-    TypedCallbackWithoutParam(CallbackWithoutParam c): callback(c) {};
-};
-template<typename T1, typename T2, typename T3>
-class TypedCallbackWithParam {
-public:
-    typedef void (*CallbackWithParam)(PromiseResolver<T2>*, T1, T3);
-    CallbackWithParam callback;
-    TypedCallbackWithParam(CallbackWithParam c): callback(c) {};
-};
-
-class BaseCancelHandler {
-public:
-    BaseCancelHandler() {};
-    void execute() {};
-};
-
-template<typename T>
-class TypedPromiseCancelHandler: public BaseCancelHandler {
-public:
-    typedef void (*CancelHandlerWithoutParam)();
-    typedef void (*CancelHandlerWithParam)(T);
-
-    CancelHandlerWithoutParam callbackWithoutParam;
-    CancelHandlerWithParam callbackWithParam;
-    bool _withParam;
-    T _param;
-
-    TypedPromiseCancelHandler(CancelHandlerWithoutParam c): BaseCancelHandler(), callbackWithoutParam(c), _withParam(false) {};
-    TypedPromiseCancelHandler(CancelHandlerWithParam c): BaseCancelHandler(), callbackWithParam(c), _withParam(true) {};
-
-    void execute() {
-        if (this._withParam) {
-            callbackWithParam(_param);
-        } else {
-            callbackWithoutParam();
-        }
-    };
-};
-
-
-class BaseDeleteObjectContainer {};
-template<typename T>
-class DeleteObjectContainer: public BaseDeleteObjectContainer {
-public:
-    T* obj;
-    DeleteObjectContainer(T* o): BaseDeleteObjectContainer(), obj(o) {};
-    ~DeleteObjectContainer() { delete obj; };
-};
-
-class BasePromise {
-protected: // types
-    static ulong idCounter;
-    static int deletedPromiseCounter;
-    static BasePromise* allPromises[];
-
-    enum PromiseStatusTypes { ResolvedState, RejectedState, inProgressState, DeletedState };
-    enum PromiseChildType { ThenType, CatchType, FinallyType, NullType };
-
-protected: // fields
-    ulong id;
-    PromiseStatusTypes promiseStatus;
-    PromiseChildType promiseChildType;
-
-    BasePromise* parentPromise;
-    BasePromise* parentPromises[];
-    BasePromise* childPromises[];
-    BaseCancelHandler* cancelHandlers[];
-
-protected: // constructor
-    BasePromise(): id(idCounter++), promiseStatus(inProgressState), promiseChildType(NullType) {
-        ArrayResize(this.parentPromises, 0, 2);
-        ArrayResize(this.childPromises, 0, 2);
-        ArrayResize(this.cancelHandlers, 0, 2);
-        
-        BasePromise::addObjectToArray(BasePromise::allPromises, &this);
-    };
-    BasePromise(BasePromise* parent, PromiseChildType childType): id(idCounter++), promiseStatus(inProgressState), parentPromise(parent), promiseChildType(childType) {
-        ArrayResize(this.parentPromises, 0, 2);
-        ArrayResize(this.childPromises, 0, 2);
-        ArrayResize(this.cancelHandlers, 0, 2);
-
-        BasePromise::addObjectToArray(this.parentPromises, parent);
-        BasePromise::addObjectToArray(parent.childPromises, &this);
-        BasePromise::addObjectToArray(BasePromise::allPromises, &this);
-    };
-
-public: // methods
-    void virtual _resolveHandler() {};
-    void virtual _rejectHandler() {};
-
-    void virtual _thenExecuteResolve() {};
-    void virtual _thenExecuteReject() {};
-    void virtual _thenExecuteRejectWaitForDelete() {};
-
-    void virtual _catchExecuteResolve() {};
-    void virtual _catchExecuteReject() {};
-    void virtual _catchExecuteRejectWaitForDelete() {};
-
-    void virtual _finallyExecuteResolve() {};
-
-protected: // utils
-    template<typename T>
-    static void addObjectToArray(T* &array[], T* promise) {
-        int currentSize = ArraySize(array);
-        ArrayResize(array, currentSize + 1, MathMax(currentSize/10, 10));
-        array[currentSize] = promise;
-    };
-    template<typename T>
-    static void removeObjectFromArray(T* &array[], T* promise) {
-        int currentSize = ArraySize(array);
-        for (int i = 0; i < currentSize; i++) {
-            if (array[i] == promise) {
-                for (int j = i; j < currentSize - 1; j++) {
-                    array[j] = array[j + 1];
-                }
-                ArrayResize(array, currentSize - 1, MathMax(currentSize/10, 10));
-                return;
-            }
-        }
-    };
-
-    static void destroy(BasePromise* promise) {
-        for (int i = 0; i < ArraySize(promise.parentPromises); i++) {
-            BasePromise* parentPromise = promise.parentPromises[i];
-            BasePromise::removeObjectFromArray(parentPromise.childPromises, promise);
-            if (ArraySize(parentPromise.childPromises) == 0) BasePromise::destroy(parentPromise);
-        }
-
-        promise.promiseStatus = DeletedState;
-        BasePromise::deletedPromiseCounter++;
-        BasePromise::cleanupAllPromises();
-    };
-    static void cleanupAllPromises() {
-        int allPromiseCount = ArraySize(BasePromise::allPromises);
-
-        if (BasePromise::deletedPromiseCounter > 10 && BasePromise::deletedPromiseCounter > (allPromiseCount/20)) {
-            int validIndex = 0; 
-
-            for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) {
-                if (BasePromise::allPromises[i].promiseStatus == DeletedState) {
-                    delete BasePromise::allPromises[i];
-                    continue;
-                }
-                BasePromise::allPromises[validIndex++] = BasePromise::allPromises[i];
-            }
-            
-            ArrayResize(BasePromise::allPromises, validIndex, MathMax(validIndex/20, 50));
-            BasePromise::deletedPromiseCounter = 0;
-        }
-    };
-
-public: // initializer and destructor
-    class PromiseInitializerAndDestructor {
-    public:
-        ~PromiseInitializerAndDestructor() { for (int i = 0; i < ArraySize(BasePromise::allPromises); i++) delete BasePromise::allPromises[i]; }
-    };
-};
-
-ulong BasePromise::idCounter = 0;
-int BasePromise::deletedPromiseCounter = 0;
-BasePromise* BasePromise::allPromises[];
-BasePromise::PromiseInitializerAndDestructor basePromiseInitializerAndDestructor;
-
-class BasePromiseResolver {
-public:
-    BasePromise* _basePromise;
-    string _rejectValue;
-    bool _isRejected;
-    bool _alreadyResolved;
-
-    BasePromiseResolver(BasePromise* promise): _basePromise(promise), _alreadyResolved(false), _isRejected(false) {};
-
-    void virtual _resolveWithInnerValue() {};
-    void virtual _rejectWithInnerValue() { this.reject(this._rejectValue); };
-
-    void reject(string rejectParam) {
-        if (!this._alreadyResolved) {
-            this._rejectValue = rejectParam;
-            this._alreadyResolved = true;
-            this._isRejected = true;
-            this._basePromise._rejectHandler();
-        }
-    };
-    void reject() {
-        if (!this._alreadyResolved) {
-            this._rejectValue = "";
-            this._alreadyResolved = true;
-            this._isRejected = true;
-            this._basePromise._rejectHandler();
-        }
-    };
-};
-
-template<typename T>
-class PromiseResolver: public BasePromiseResolver{
-public:
-    T _value;
-
-    PromiseResolver(BasePromise* promise): BasePromiseResolver(promise) {};
-
-    void virtual _resolveWithInnerValue() override { this.resolve(this._value); };
-
-    void resolve(T resolveParam) {
-        if (!this._alreadyResolved) {
-            this._value = resolveParam;
-            this._alreadyResolved = true;
-            this._basePromise._resolveHandler();
-        }
-    };
-    void resolve() {
-        if (!this._alreadyResolved) {
-            this._alreadyResolved = true;
-            this._basePromise._resolveHandler();
-        }
-    };
-};
-
 // T1 - prev promise return type
 // T2 - promise return type
 // T3 - param type
@@ -272,8 +34,8 @@ public: // create callback
     static TypedCallbackWithParam<T1,T2,T3>* callback(CallbackWithParam call)                       { return new TypedCallbackWithParam<T1,T2,T3>(call); };
 
 public: // create cancel callback
-    static TypedPromiseCancelHandler<string>* cancelCallback(CancelHandlerWithoutParam call)        { return new TypedPromiseCancelHandler<string>(call); };
-    static TypedPromiseCancelHandler<T3>* cancelCallback(TypedCancelHandlerWithStringParam call)    { return new TypedPromiseCancelHandler<T3>(call); };
+    static TypedPromiseCallback<string>* cancelCallback(CancelHandlerWithoutParam call)        { return new TypedPromiseCallback<string>(call); };
+    static TypedPromiseCallback<T3>* cancelCallback(TypedCancelHandlerWithStringParam call)    { return new TypedPromiseCallback<T3>(call); };
 
 private: // fields
     PromiseResolver<T2>* resolver;
@@ -568,15 +330,15 @@ public: // utils
     TypedPromise* addCancelHandler(CancelHandlerWithStringParam c, string param_)    { return this.addCancelHandler(TypedPromise<string, string, string>::cancelCallback(c), param_); };
     
     template<typename TT1>
-    TypedPromise* addCancelHandler(TypedPromiseCancelHandler<TT1>* handler) {
-        BaseCancelHandler* baseHandler = handler;
+    TypedPromise* addCancelHandler(TypedPromiseCallback<TT1>* handler) {
+        BasePromiseCallback* baseHandler = handler;
         BasePromise::addObjectToArray(this.cancelHandlers, baseHandler);
         return &this;
     };
     template<typename TT1>
-    TypedPromise* addCancelHandler(TypedPromiseCancelHandler<TT1>* handler, TT1 param_) {
+    TypedPromise* addCancelHandler(TypedPromiseCallback<TT1>* handler, TT1 param_) {
         handler._param = param_;
-        BaseCancelHandler* baseHandler = handler;
+        BasePromiseCallback* baseHandler = handler;
         BasePromise::addObjectToArray(this.cancelHandlers, baseHandler);
         return &this;
     };
@@ -630,29 +392,4 @@ public: // callbacks
         delete paramObject;
         resolver.resolve();
     };
-};
-
-class Promise: public TypedPromise<string, string, string> {
-    public:
-
-    Promise(CallbackWithoutPrevResult call): TypedPromise<string, string, string>(call) {};
-    Promise(CallbackWithoutParam call): TypedPromise<string, string, string>(call) {};
-    Promise(CallbackWithParam call, string p): TypedPromise<string, string, string>(call, p) {};
-
-    static TypedPromise<string, string, string>* try(CallbackWithoutPrevResult call)            { return new Promise(call); };
-    static TypedPromise<string, string, string>* try(CallbackWithoutParam call)                 { return new Promise(call); };
-    static TypedPromise<string, string, string>* try(CallbackWithParam call, string p)          { return new Promise(call, p); };
-
-    template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutPrevResult<T1, T2, T3>* call)      { return new TypedPromise<T1, T2, T3>(call); };
-    template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithoutParam<T1, T2, T3>* call)           { return new TypedPromise<T1, T2, T3>(call); };
-    template<typename T1, typename T2, typename T3>
-    static TypedPromise<T1, T2, T3>* try(TypedCallbackWithParam<T1, T2, T3>* call, T3 param)    { return new TypedPromise<T1, T2, T3>(call, param); };
-
-    template<typename T2>
-    static TypedPromise<string, T2, T2>* resolve(T2 param) { return new TypedPromise<string, T2, T2>(TypedPromise<string, T2, T2>::_resolveParamCallback, param); };
-    static TypedPromise<string, string, string>* resolve() { return new Promise(Promise::_resolveParamCallback, ""); };
-
-    static TypedPromise<string, string, string>* reject(string message = "") { return new Promise(Promise::_rejectParamCallback, ""); };
 };
